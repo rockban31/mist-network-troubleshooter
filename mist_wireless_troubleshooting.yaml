@@ -1,0 +1,58 @@
+automation_plan:
+  description: >
+    Automated workflow for troubleshooting wireless client connectivity using Mist systems.
+    The automated script checks key logs and client health metrics; all further troubleshooting is manual.
+
+  automated_script_scope:
+    input:
+      - client_ip
+      - client_mac
+    checks:
+      - authentication_authorization_failure_logs
+      - dns_dhcp_lease_errors
+      - client_health_metrics:
+          - rssi
+          - snr
+          - retries
+          - latency
+    output_logic:
+      - condition: authentication_authorization_failure_logs_detected
+        output: "Due to detected authentication/authorization failures, troubleshoot on ISE."
+      - condition: dns_dhcp_lease_errors_detected
+        output: "Due to detected DNS/DHCP lease errors, check network infrastructure (LAN, WAN, DHCP, DNS)."
+      - condition: client_health_metrics_issues_detected
+        output: "Client health metric issue detected; refer to manual troubleshooting workflow."
+      - condition: no_issues_detected
+        output: "All automated checks look good; proceed with manual troubleshooting steps as needed."
+
+  manual_troubleshooting_actions:
+    steps:
+      - if_auth_failure_troubleshoot_on: ISE
+      - if_dns_dhcp_errors_check: [LAN, WAN, DHCP, DNS]
+      - client_connectivity_analysis: [reachability, latency, drops]
+      - assess_ap_radio_performance: [client_load, channel_utilization, noise]
+      - ap_hardware_checks: [led_status, physical_integrity, cabling]
+      - rf_environment_analysis: [coverage, interference, spectrum_validation]
+
+  summary_table:
+    - step: Auth/Auth Failure Logs
+      automated_script: Yes
+      manual_human: "If failed, troubleshoot on ISE"
+    - step: DNS/DHCP Lease Errors
+      automated_script: Yes
+      manual_human: "If errors, check network infra"
+    - step: Client Health Metrics
+      automated_script: Yes
+      manual_human: "If issues, further manual client/AP analysis"
+    - step: LAN/WAN/DHCP/DNS Checks
+      automated_script: No
+      manual_human: Yes
+    - step: AP & Radio Performance
+      automated_script: No
+      manual_human: Yes
+    - step: AP Hardware Checks
+      automated_script: No
+      manual_human: Yes
+    - step: RF Environment Analysis
+      automated_script: No
+      manual_human: Yes
