@@ -295,17 +295,72 @@ class MistTroubleshooter:
         print(f"Band: {client_info.get('band', 'Unknown')}")
         print(f"Channel: {client_info.get('channel', 'Unknown')}")
 
+    def list_organizations(self):
+        """List all organizations for this API token"""
+        endpoint = "/orgs"
+        return self.make_api_request(endpoint)
+    
+    def auto_select_org(self):
+        """Automatically select organization if only one exists"""
+        orgs = self.list_organizations()
+        if not orgs:
+            print("❌ No organizations found for this API token")
+            return None
+        
+        if len(orgs) == 1:
+            print(f"✅ Auto-selected organization: {orgs[0]['name']} ({orgs[0]['id']})")
+            return orgs[0]['id']
+        
+        print(f"\n📋 Multiple organizations found:")
+        for i, org in enumerate(orgs, 1):
+            print(f"   {i}. {org['name']} ({org['id']})")
+        
+        while True:
+            try:
+                choice = input(f"\nSelect organization (1-{len(orgs)}): ")
+                idx = int(choice) - 1
+                if 0 <= idx < len(orgs):
+                    selected_org = orgs[idx]
+                    print(f"✅ Selected: {selected_org['name']} ({selected_org['id']})")
+                    return selected_org['id']
+                else:
+                    print(f"❌ Please enter a number between 1 and {len(orgs)}")
+            except ValueError:
+                print("❌ Please enter a valid number")
+
 def main():
     parser = argparse.ArgumentParser(description='Mist Network Troubleshooting Script')
     parser.add_argument('--token', required=True, help='Mist API Token')
-    parser.add_argument('--org-id', required=True, help='Mist Organization ID')
+    parser.add_argument('--org-id', help='Mist Organization ID (optional - will auto-detect if not provided)')
     parser.add_argument('--client-ip', required=True, help='Client IP Address')
     parser.add_argument('--client-mac', required=True, help='Client MAC Address')
+    parser.add_argument('--list-orgs', action='store_true', help='List available organizations and exit')
     
     args = parser.parse_args()
     
-    # Initialize troubleshooter
-    troubleshooter = MistTroubleshooter(args.token, args.org_id)
+    # If just listing orgs
+    if args.list_orgs:
+        temp_troubleshooter = MistTroubleshooter(args.token, "temp")
+        orgs = temp_troubleshooter.list_organizations()
+        if orgs:
+            print("\n📋 Available Organizations:")
+            for org in orgs:
+                print(f"   Name: {org['name']}")
+                print(f"   ID: {org['id']}")
+                print(f"   Sites: {org.get('num_sites', 'Unknown')}")
+                print("-" * 50)
+        return
+    
+    # Determine org_id
+    org_id = args.org_id
+    if not org_id:
+        temp_troubleshooter = MistTroubleshooter(args.token, "temp")
+        org_id = temp_troubleshooter.auto_select_org()
+        if not org_id:
+            return
+    
+    # Initialize troubleshooter with determined org_id
+    troubleshooter = MistTroubleshooter(args.token, org_id)
     
     # Run analysis
     troubleshooter.troubleshoot_client(args.client_ip, args.client_mac)
